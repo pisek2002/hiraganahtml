@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japanese Hiragana Matching Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #f9f9f9, #ffffff);
+            overflow: hidden;
+            position: relative;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #ff4500;
+            margin-bottom: 20px;
+            text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .game-container {
+            display: flex;
+            flex-wrap: wrap;
+            max-width: 800px;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .card {
+            width: 100px;
+            height: 100px;
+            background-color: #fff;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s;
+        }
+
+        .card:hover {
+            transform: scale(1.1);
+        }
+
+        .matched {
+            background-color: #98fb98;
+            cursor: default;
+        }
+
+        .button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1rem;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .button:hover {
+            background-color: #0056b3;
+        }
+
+        .score {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .timer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ff4500;
+        }
+
+        @media (max-width: 768px) {
+            .card {
+                width: 80px;
+                height: 80px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="title">Japanese Hiragana Matching Game</div>
+    <div class="timer" id="timer">Time: 60s</div>
+    <div class="score" id="score">Score: 0</div>
+    <div class="game-container" id="game-container"></div>
+    <button class="button" onclick="startGame()">Restart</button>
+
+    <audio id="background-music" loop>
+        <source src="https://www.bensound.com/bensound-music/bensound-ukulele.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const hiragana = [
+            { character: "あ", romaji: "a" },
+            { character: "い", romaji: "i" },
+            { character: "う", romaji: "u" },
+            { character: "え", romaji: "e" },
+            { character: "お", romaji: "o" },
+            { character: "か", romaji: "ka" },
+            { character: "き", romaji: "ki" },
+            { character: "く", romaji: "ku" },
+            { character: "け", romaji: "ke" },
+            { character: "こ", romaji: "ko" },
+            { character: "さ", romaji: "sa" },
+            { character: "し", romaji: "shi" },
+            { character: "す", romaji: "su" },
+            { character: "せ", romaji: "se" },
+            { character: "そ", romaji: "so" },
+            { character: "た", romaji: "ta" },
+            { character: "ち", romaji: "chi" },
+            { character: "つ", romaji: "tsu" },
+            { character: "て", romaji: "te" },
+            { character: "と", romaji: "to" },
+            { character: "な", romaji: "na" },
+            { character: "に", romaji: "ni" },
+            { character: "ぬ", romaji: "nu" },
+            { character: "ね", romaji: "ne" },
+            { character: "の", romaji: "no" },
+            { character: "は", romaji: "ha" },
+            { character: "ひ", romaji: "hi" },
+            { character: "ふ", romaji: "fu" },
+            { character: "へ", romaji: "he" },
+            { character: "ほ", romaji: "ho" },
+            { character: "ま", romaji: "ma" },
+            { character: "み", romaji: "mi" },
+            { character: "む", romaji: "mu" },
+            { character: "め", romaji: "me" },
+            { character: "も", romaji: "mo" },
+            { character: "や", romaji: "ya" },
+            { character: "ゆ", romaji: "yu" },
+            { character: "よ", romaji: "yo" },
+            { character: "ら", romaji: "ra" },
+            { character: "り", romaji: "ri" },
+            { character: "る", romaji: "ru" },
+            { character: "れ", romaji: "re" },
+            { character: "ろ", romaji: "ro" },
+            { character: "わ", romaji: "wa" },
+            { character: "を", romaji: "wo" },
+            { character: "ん", romaji: "n" }
+        ];
+
+        let score = 0;
+        let firstCard = null;
+        let secondCard = null;
+        let timeLeft = 60;
+        let timerInterval;
+
+        const correctSound = new Audio('https://www.soundjay.com/button/sounds/button-4.mp3');
+        const wrongSound = new Audio('https://www.soundjay.com/button/sounds/button-10.mp3');
+        const timeUpSound = new Audio('https://www.soundjay.com/button/sounds/beep-07.mp3');
+        const backgroundMusic = document.getElementById('background-music');
+
+        function updateScore() {
+            document.getElementById('score').innerText = `Score: ${score}`;
+        }
+
+        function updateTimer() {
+            document.getElementById('timer').innerText = `Time: ${timeLeft}s`;
+        }
+
+        function startTimer() {
+            timeLeft = 60;
+            updateTimer();
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimer();
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    timeUpSound.play();
+                    alert('Time is up! Your final score: ' + score);
+                    startGame();
+                }
+            }, 1000);
+        }
+
+        function shuffle(array) {
+            return array.sort(() => Math.random() - 0.5);
+        }
+
+        function createCard(content, type) {
+            const card = document.createElement('div');
+            card.classList.add('card');
+            card.innerText = content;
+            card.dataset.type = type;
+            card.dataset.value = content;
+
+            card.addEventListener('click', () => {
+                if (card.classList.contains('matched') || card === firstCard) return;
+
+                card.classList.add('flipped');
+
+                if (!firstCard) {
+                    firstCard = card;
+                } else {
+                    secondCard = card;
+                    checkMatch();
+                }
+            });
+
+            return card;
+        }
+
+        function checkMatch() {
+            const isMatch =
+                (firstCard.dataset.type === 'character' && secondCard.dataset.type === 'romaji' &&
+                    hiragana.find(h => h.character === firstCard.dataset.value && h.romaji === secondCard.dataset.value)) ||
+                (firstCard.dataset.type === 'romaji' && secondCard.dataset.type === 'character' &&
+                    hiragana.find(h => h.romaji === firstCard.dataset.value && h.character === secondCard.dataset.value));
+
+            if (isMatch) {
+                correctSound.play();
+                score += 10;
+                updateScore();
+                firstCard.classList.add('matched');
+                secondCard.classList.add('matched');
+                firstCard = null;
+                secondCard = null;
+            } else {
+                wrongSound.play();
+                setTimeout(() => {
+                    firstCard.classList.remove('flipped');
+                    secondCard.classList.remove('flipped');
+                    firstCard = null;
+                    secondCard = null;
+                }, 1000);
+            }
+        }
+
+        function startGame() {
+            const gameContainer = document.getElementById('game-container');
+            gameContainer.innerHTML = '';
+            score = 0;
+            updateScore();
+            clearInterval(timerInterval);
+            startTimer();
+
+            backgroundMusic.play();
+
+            const selectedHiragana = shuffle(hiragana).slice(0, 15);
+
+            const shuffledCards = shuffle(
+                selectedHiragana.flatMap(h => [
+                    createCard(h.character, 'character'),
+                    createCard(h.romaji, 'romaji')
+                ])
+            );
+
+            shuffledCards.forEach(card => gameContainer.appendChild(card));
+        }
+
+        startGame();
+    </script>
+</body>
+</html>
